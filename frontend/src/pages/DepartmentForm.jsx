@@ -1,0 +1,16 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import AppLayout from "../components/AppLayout";
+import { departmentService } from "../services/entityService";
+
+function DepartmentForm() {
+  const { id } = useParams(); const navigate = useNavigate(); const isEdit = Boolean(id);
+  const [form, setForm] = useState({ nom: "", histoire: "", domaine: "sciences" });
+  const [imageFile, setImageFile] = useState(null); const [loading, setLoading] = useState(isEdit); const [saving, setSaving] = useState(false); const [errors, setErrors] = useState({}); const [serverError, setServerError] = useState("");
+  useEffect(() => { if (!isEdit) return setLoading(false); departmentService.getById(id).then((r) => setForm({ nom: r.data.nom || "", histoire: r.data.histoire || "", domaine: r.data.domaine || "sciences" })).catch((e) => setServerError(e.message)).finally(() => setLoading(false)); }, [id, isEdit]);
+  const validate = () => { const next = {}; if (!form.nom.trim()) next.nom = "Nom obligatoire"; if (!form.domaine.trim()) next.domaine = "Domaine obligatoire"; return next; };
+  const handleSubmit = async (e) => { e.preventDefault(); const next = validate(); setErrors(next); if (Object.keys(next).length) return; try { setSaving(true); if (isEdit) { await departmentService.update(id, form); } else { const fd = new FormData(); fd.append("nom", form.nom); fd.append("histoire", form.histoire); fd.append("domaine", form.domaine); if (imageFile) fd.append("image", imageFile); await departmentService.create(fd, true); } navigate("/departments"); } catch (e) { setServerError(e.message); } finally { setSaving(false); } };
+  return <AppLayout title={isEdit ? "Modifier département" : "Ajouter département"}>{loading ? <section className="state-box">Chargement...</section> : <section className="form-card"><form className="entity-form" onSubmit={handleSubmit}><div className="form-grid"><div><label>Nom</label><input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} />{errors.nom && <p className="error-text">{errors.nom}</p>}</div><div><label>Domaine</label><select value={form.domaine} onChange={(e) => setForm({ ...form, domaine: e.target.value })}><option value="sciences">sciences</option><option value="literature">literature</option><option value="informatique">informatique</option><option value="gestion">gestion</option><option value="philo">philo</option><option value="autre">autre</option></select>{errors.domaine && <p className="error-text">{errors.domaine}</p>}</div><div className="full-width"><label>Histoire</label><textarea value={form.histoire} onChange={(e) => setForm({ ...form, histoire: e.target.value })} /></div>{!isEdit && <div className="full-width"><label>Image</label><input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} /></div>}</div>{serverError && <p className="error-text">{serverError}</p>}<div className="form-actions"><Link to="/departments" className="ghost-btn">Retour</Link><button className="primary-btn" disabled={saving}>{saving ? "Enregistrement..." : "Enregistrer"}</button></div></form></section>}</AppLayout>;
+}
+
+export default DepartmentForm;
